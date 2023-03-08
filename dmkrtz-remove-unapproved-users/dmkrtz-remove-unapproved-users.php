@@ -2,9 +2,11 @@
 /*
 Plugin Name: dmkrtz Remove Unapproved Users
 Plugin URI: http://dmkrtz.de
-Description: An easy to use and very basic Discord Webhook post plugin. Hooks into WP's "publish_post" function.</br>Comes with several toggles and options.
+GitHub Plugin URI: dmkrtz/wp-remove-unapproved-users
+GitHub Plugin URI: https://github.com/dmkrtz/wp-remove-unapproved-users
+Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
-Author URI: http://dmkrtz.de
+Author URI: https://dmkrtz.de
 Version: 0.1
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
