@@ -6,7 +6,7 @@ GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.3
+Version: 0.2.1
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
 if ( ! defined( 'ABSPATH' ) ) exit;
