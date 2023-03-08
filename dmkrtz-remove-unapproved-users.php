@@ -225,10 +225,11 @@ function dmkrtz_ruu_1_render(  ) {
 			echo '<p><b>Ultimate Member</b></p>';
 		
 			$args = array(
-				'meta_key'      =>  'account_status',
-				'meta_value'    =>  'awaiting_email_confirmation',
-				'orderby'		=>	'user_registered',
-				'order'			=>	'DESC'
+				'role'		=>	'um_user',
+				'meta_key'     	=>  	'account_status',
+				'meta_value'    =>  	'awaiting_email_confirmation',
+				'orderby'	=>	'user_registered',
+				'order'		=>	'DESC'
 			);
 
 			$users = get_users($args);
