@@ -165,6 +165,11 @@ function dmkrtz_ruu_0_render( ) {
 		?>
 		
 		<div>
+			<p>Affected user roles</p>
+			<?php wp_dropdown_roles(); ?>
+		</div>
+		
+		<div>
 			<p>Days after unconfirmed registration until a user is considered to be purged:</p>
 			<input id="purgeafterInput" type="range" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafter.value=purgeafterInput.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]' style="width: 100%; max-width: 250px;"/>
 			<input id="purgeafter" type="number" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafterInput.value=purgeafter.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]'/>
@@ -224,11 +229,11 @@ function dmkrtz_ruu_1_render(  ) {
 			echo '<p><b>Ultimate Member</b></p>';
 		
 			$args = array(
-				'role'		=>	'um_user',
-				'meta_key'     	=>  	'account_status',
-				'meta_value'    =>  	'awaiting_email_confirmation',
-				'orderby'	=>	'user_registered',
-				'order'		=>	'DESC'
+				'role__in'		=>	[ $options['dmkrtz_ruu_roles'] ],
+				'meta_key'     	=>  'account_status',
+				'meta_value'    =>  'awaiting_email_confirmation',
+				'orderby'		=>	'user_registered',
+				'order'			=>	'DESC'
 			);
 
 			$users = get_users($args);
