@@ -1,9 +1,8 @@
 <?php
 /*
 Plugin Name: dmkrtz Remove Unapproved Users
-Plugin URI: http://dmkrtz.de
-GitHub Plugin URI: dmkrtz/wp-remove-unapproved-users
-GitHub Plugin URI: https://github.com/dmkrtz/wp-remove-unapproved-users
+Plugin URI: https://dmkrtz.de
+GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
