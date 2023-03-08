@@ -159,22 +159,29 @@ function dmkrtz_ruu_0_render( ) {
 	
 	// Default Value
 	if ($options['dmkrtz_ruu_purgeafter'] ? $purgeafter = $options['dmkrtz_ruu_purgeafter'] : $purgeafter = 7 );
-	
+	if ($options['dmkrtz_ruu_roles'] ? $roles = $options['dmkrtz_ruu_roles'] : $roles = [ get_option('default_role') ] );
+
 	if (!empty($dmkrtz_ruu_foundplugins)) {
-	
+		global $wp_roles;
 		?>
 		
 		<div>
-			<p>Affected user roles</p>
-			<?php wp_dropdown_roles(); ?>
+			<p>Affected user roles (none = default role from settings, CTRL+click to select multiple)</p>
+			<!-- <input type="text" id="affectedRoles" value="<?= $roles ?>" name="dmkrtz_ruu_settings[dmkrtz_ruu_roles]" placeholder="<?= get_option('default_role'); ?>"> -->
+			<select id="affectedRoles" name="dmkrtz_ruu_settings[dmkrtz_ruu_roles][]" style="height: 250px;" multiple>
+				<?php
+				foreach($wp_roles->get_names() as $k => $v) {
+					echo "<option value='$k' ".(in_array($k, $roles) ? "selected" : "").">$v ($k)</option>";
+				}
+				?>
+			</select>
 		</div>
-		
+		<hr>
 		<div>
 			<p>Days after unconfirmed registration until a user is considered to be purged:</p>
 			<input id="purgeafterInput" type="range" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafter.value=purgeafterInput.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]' style="width: 100%; max-width: 250px;"/>
 			<input id="purgeafter" type="number" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafterInput.value=purgeafter.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]'/>
 		</div>
-		
 		<div>
 			<p>Toggle daily automatic purge:</p>
 			<label class="switch">
@@ -182,7 +189,7 @@ function dmkrtz_ruu_0_render( ) {
 				<span class="slider round"></span>
 			</label>
 		</div>
-		
+		<hr>
 		<div>
 			<p>Toggle E-Mail notification:</p>
 			<label class="switch">
@@ -195,7 +202,7 @@ function dmkrtz_ruu_0_render( ) {
 			<p>E-Mail Receiver (blank = Admin Email):</p>
 			<input type='email' name="dmkrtz_ruu_settings[dmkrtz_ruu_emailreceiver]" placeholder="<?= get_bloginfo( 'admin_email' ) ?>" value="<?= $options['dmkrtz_ruu_emailreceiver'] ?>"></input>
 		</div>
-		
+
 		<div>
 			<p>E-Mail content:</p>
 			<p>You can use following variables for information: <code>{count}</code>.</p>
@@ -227,9 +234,11 @@ function dmkrtz_ruu_1_render(  ) {
 		if ($options['dmkrtz_ruu_memberplugin'] == "um") {
 			
 			echo '<p><b>Ultimate Member</b></p>';
+			
+			$roles = $options['dmkrtz_ruu_roles'];
 		
 			$args = array(
-				'role__in'		=>	[ $options['dmkrtz_ruu_roles'] ],
+				'role__in'		=>	$roles,
 				'meta_key'     	=>  'account_status',
 				'meta_value'    =>  'awaiting_email_confirmation',
 				'orderby'		=>	'user_registered',
