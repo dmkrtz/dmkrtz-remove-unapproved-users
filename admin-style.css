@@ -1,0 +1,280 @@
+form {
+	margin-right: 10px !important;
+}
+
+label {
+	display:block;
+}
+
+input[type=text], input[type=url], input[type=email], select, textarea {
+	width: 100%;
+	max-width: 400px;
+}
+
+input[type=checkbox] {
+	margin-right: 10px;
+}
+
+input[type=color] {
+	-webkit-appearance: none;
+	appearance: none;
+	border: none;
+	width: 32px;
+	height: 32px;
+	margin: 0;
+	padding: 0;
+	background-color: transparent;
+}
+input[type="color"]::color-swatch-wrapper {
+	padding: 0;
+}
+input[type="color"]::color-swatch {
+	border: none;
+}
+
+.wrap {
+	display: flex;
+	flex-direction: row;
+	margin: 0 5px 0 0;
+}
+
+.wrap p {
+	margin-top: 0;
+	margin-bottom: 5px;
+	font-weight: 600;
+}
+
+.wrap input {
+	margin-bottom: 15px;
+	display: inline-block;
+}
+
+.wrap div {
+	flex: 1 1 auto;
+}
+
+.wrap .wrapped{
+	width: 100%;
+	display: inline-block;
+}
+
+.wrap .wrapped:first-of-type{
+	margin-right: 5px;
+}
+
+.prev .avatar-container {
+	display: table-cell;
+	vertical-align: middle;
+	overflow: hidden;
+	height: 50px;
+	width: 50px;
+	border-radius: 50%;
+}
+
+.prev .avatar-container > .avatar-img {
+	width: 100%;
+}
+
+.prev {
+	background: #36393f;
+	border-radius: 5px;
+	box-shadow: 0 0 2px black;
+	color: #eee;
+}
+
+.prev .preview-avatar {
+	vertical-align: top;
+	padding: 5px 5px;
+}
+
+.prev .preview-name {
+	vertical-align: top;
+	padding-right: 10px;
+	font-weight: 600;
+}
+
+.prev .preview-date {
+	vertical-align: top;
+	position: relative;
+	top: 2.5px;
+	font-size: 12px;
+	color: #999;
+	padding-right: 5px;
+}
+
+.prev .preview-message {
+	position: relative;
+	padding-right: 10px;
+}
+
+.prev .code-inline {
+    padding: 1px 1px;
+    background-color: #222;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+-prev .hidden-inline {
+    padding: 1px 1px;
+    background-color: #222;
+	color: #222;
+    border-radius: 3px;
+}
+
+.prev .role-inline {
+    padding: 1px 1px;
+    background-color: rgba(114, 137, 218, 0.25);
+	color: #7289DA;
+    border-radius: 3px;
+	font-weight: 500;
+}
+
+.embed-container {
+	background: #2f3136;
+	width: 100%;
+	height: auto;
+	margin-top: 3px;
+	border-left: solid 3px lime;
+	border-radius: 3px 0 0 3px;
+	max-width: 250px;
+}
+
+.preview-embed {
+
+}
+
+.preview-embed td {
+	padding: 0;
+}
+
+.preview-embed .author-img {
+	height: 50px;
+    width: 50px;
+}
+
+.preview-embed .author-img img {
+	height: 100%;
+}
+
+.label-inline {
+	display: inline;
+}
+
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 25px;
+  margin-right: 10px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+  width: auto !important;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input + .slider {
+	background-color: #d9534f;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(34px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 100px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.slider:hover {
+	border-radius: 100px;
+}
+
+.checklist {
+	height: 250px;
+	overflow-y: auto;
+	background: #fff;
+	font-size: 14px;
+    line-height: 2;
+    color: #2c3338;
+    border-color: #8c8f94;
+	border: solid 1px black;
+    box-shadow: none;
+    border-radius: 3px;
+    padding: 0 24px 0 8px;
+    min-height: 30px;
+    -webkit-appearance: none;
+    cursor: default;
+    vertical-align: middle;
+	resize: vertical;
+}
+
+.wrap .checklist input {
+	margin-bottom: 0px !important;
+}
+
+.form-buttons {
+	position: fixed;
+	background: #1d2327;
+	color: #f0f0f1;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+	width: 100%;
+    text-align: right;
+    padding: 5px;
+}
+
+.swal2-title,
+.swal2-content {
+	color: #f0f0f1 !important;
+}
+
+.swal2-popup, 
+.swal2-toast {
+	background: #1d2327 !important;
+	box-shadow: 0 0 0.625em black !important;
+}
