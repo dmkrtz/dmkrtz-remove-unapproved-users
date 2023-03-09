@@ -1,12 +1,12 @@
 <?php
 /*
-Plugin Name: dmkrtz Remove Unapproved Users
+Plugin Name: dmkrtz Remove Unapproved Users (GitHub)
 Plugin URI: https://dmkrtz.de
 GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.2.2
+Version: 0.2.3
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
 if ( ! defined( 'ABSPATH' ) ) exit;
