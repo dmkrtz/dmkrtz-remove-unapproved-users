@@ -6,14 +6,14 @@ GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.2.3
+Version: 0.3.0
+*/
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
 if ( ! defined( 'ABSPATH' ) ) exit;
 /* Nach dieser Zeile den Code einfügen*/
 
 $dmkrtz_ruu_foundplugins = [];
-$dmkrtz_ruu_logfile = WP_PLUGIN_DIR . '/dmkrtz-remove-unapproved-users/purge.log';
 $ruu_topurge = 0;
 
 $plugin = plugin_basename(__FILE__); 
@@ -33,7 +33,8 @@ function load_custom_wp_admin_scripts_ruu($hook) {
 	if($hook != "dmkrtz-tools_page_remove_unapproved_users") {
         return;
     }
-	wp_register_script( 'scripts', plugins_url('js/scripts.js', __FILE__));
+	wp_register_script( 'scripts', plugins_url('js/scripts.js', __FILE__), [ 'jquery' ], '0.3.0' );
+	wp_localize_script( 'scripts', 'dmkrtzRuu', [ 'ajax' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( 'dmkrtz_ruu_purge' ) ] );
 	wp_enqueue_script( 'scripts' );
 	wp_register_script( 'swal2', "https://cdn.jsdelivr.net/npm/sweetalert2@10" );
 	wp_enqueue_script( 'swal2' );
@@ -57,7 +58,7 @@ add_action( 'admin_init', 'dmkrtz_ruu_settings_init' );
 
 function dmkrtz_ruu_add_admin_menu(  ) { 
 
-	add_menu_page('dmkrtz Tools', 'dmkrtz Tools', 'manage_options', 'dmkrtz_tools', false, plugins_url("dmkrtz-remove-unapproved-users/assets/insane_logo_16.png"), 99 );
+	add_menu_page('dmkrtz Tools', 'dmkrtz Tools', 'manage_options', 'dmkrtz_tools', false, plugins_url("assets/insane_logo_16.png", __FILE__), 99 );
 	add_submenu_page( 'dmkrtz_tools', 'Remove Unapproved Users', 'Remove Unapproved Users',
     'manage_options', 'remove_unapproved_users', 'dmkrtz_ruu_options_page');
 
@@ -115,12 +116,12 @@ function dmkrtz_ruu_2_render(  ) {
 
 	$options = get_option( 'dmkrtz_ruu_settings' );
 	
-	if ( function_exists(um_user) ) {
+	if ( function_exists("um_user") ) {
 		echo '<p style="color: green;"><b>Ultimate Member</b> found.</p>';
 		$dmkrtz_ruu_foundplugins[] = "um";
 	}
 	
-	if ( function_exists(bp_actions) ) {
+	if ( function_exists("bp_actions") ) {
 		echo '<p style="color: green;"><b>BuddyPress</b> found.</p>';
 		$dmkrtz_ruu_foundplugins[] = "bp";
 	}
@@ -179,13 +180,15 @@ function dmkrtz_ruu_0_render( ) {
 		<hr>
 		<div>
 			<p>Days after unconfirmed registration until a user is considered to be purged:</p>
-			<input id="purgeafterInput" type="range" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafter.value=purgeafterInput.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]' style="width: 100%; max-width: 250px;"/>
-			<input id="purgeafter" type="number" value="<?= $purgeafter ?>" min="1" max="30" oninput="purgeafterInput.value=purgeafter.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]'/>
+			<div style="display: flex; gap: 10px;">
+			<input id="purgeafterInput" type="range" value="<?= $purgeafter ?>" min="1" max="365" oninput="purgeafter.value=purgeafterInput.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]' style="flex: 1;"/>
+			<input id="purgeafter" type="number" value="<?= $purgeafter ?>" min="1" max="365" oninput="purgeafterInput.value=purgeafter.value" name='dmkrtz_ruu_settings[dmkrtz_ruu_purgeafter]'/>
+			</div>
 		</div>
 		<div>
 			<p>Toggle daily automatic purge:</p>
 			<label class="switch">
-				<input type='checkbox' name='dmkrtz_ruu_settings[dmkrtz_ruu_schedule]' <?php checked( $options['dmkrtz_ruu_schedule'], 1 ); ?> value='1'>
+				<input type='checkbox' name='dmkrtz_ruu_settings[dmkrtz_ruu_schedule]' <?php @checked( $options['dmkrtz_ruu_schedule'], 1 ); ?> value='1'>
 				<span class="slider round"></span>
 			</label>
 		</div>
@@ -193,7 +196,7 @@ function dmkrtz_ruu_0_render( ) {
 		<div>
 			<p>Toggle E-Mail notification:</p>
 			<label class="switch">
-				<input type='checkbox' name='dmkrtz_ruu_settings[dmkrtz_ruu_sendmails]' <?php checked( $options['dmkrtz_ruu_sendmails'], 1 ); ?> value='1'>
+				<input type='checkbox' name='dmkrtz_ruu_settings[dmkrtz_ruu_sendmails]' <?php @checked( $options['dmkrtz_ruu_sendmails'], 1 ); ?> value='1'>
 				<span class="slider round"></span>
 			</label>
 		</div>
@@ -235,50 +238,30 @@ function dmkrtz_ruu_1_render(  ) {
 			
 			echo '<p><b>Ultimate Member</b></p>';
 			
-			$roles = $options['dmkrtz_ruu_roles'];
-		
-			$args = array(
-				'role__in'		=>	$roles,
-				'meta_key'     	=>  'account_status',
-				'meta_value'    =>  'awaiting_email_confirmation',
-				'orderby'		=>	'user_registered',
-				'order'			=>	'DESC'
-			);
+			$all     = dmkrtz_ruu_query( 200, false );
+			$expired = dmkrtz_ruu_query( 1, true, 'ID' );
+			$ruu_topurge = (int) $expired->get_total();
+			$remove  = dmkrtz_ruu_options()['dmkrtz_ruu_purgeafter'];
+			$now     = time();
 
-			$users = get_users($args);
-			$number_of_users = count($users);
-			
-			echo '<p>';
-			echo $number_of_users, ' Users are awaiting E-Mail confirmation.';
+			echo '<p>', (int) $all->get_total(), ' users are awaiting e-mail confirmation, <b>', $ruu_topurge, '</b> of them longer than ', $remove, ' day(s).';
+			if ( $all->get_total() > 200 ) echo ' Showing the 200 oldest.';
 			echo '</p>';
-				
-			if ( $number_of_users > 0 ) {
-				$now = time(); // Current time 
-				
+
+			if ( $all->get_total() > 0 ) {
 				echo '<div class="checklist" style="height: fit-content; max-height: 500px;">';
-					foreach ($users as $user) {
-						$your_date = strtotime($user->user_registered); // This will parses an English textual datetime into a Unix timestamp
-						$datediff = abs($now - $your_date);// Gives absolute Value 
-						$diff = floor($datediff/(60*60*24)); //Returns the lowest value by rounding down value 
-						$remove = $options['dmkrtz_ruu_purgeafter'];
-						
-						echo '<b>', $user->id, ' - ', $user->user_nicename, '</b></br>';
-						echo '<b>', count_user_posts( $user->id ), ' post(s)</b></br>';
-						echo 'Registered ', date('d.m.y H:i', $your_date);
-						if ($diff >= $remove) {
-							echo ' <b style="color: red;">(EXCEEDED!)</b>';
-							$ruu_topurge++;
-						} else {
-							echo ' (', $diff, ')';
-						}
-						echo '<hr>';
-					}
-					
+				foreach ( $all->get_results() as $user ) {
+					$registered = strtotime( $user->user_registered . ' UTC' );
+					$diff = floor( abs( $now - $registered ) / DAY_IN_SECONDS );
+					echo '<b>', (int) $user->ID, ' - ', esc_html( $user->user_nicename ), '</b></br>';
+					echo 'Registered ', esc_html( wp_date( 'd.m.y H:i', $registered ) );
+					echo $diff >= $remove ? ' <b style="color: red;">(EXCEEDED!)</b>' : ' (' . $diff . ')';
+					echo '<hr>';
+				}
 				echo '</div>';
 			}
-		
 		}
-		
+
 		// BuddyPress
 		
 		if ($options['dmkrtz_ruu_memberplugin'] == "bp") {
@@ -299,8 +282,8 @@ function dmkrtz_ruu_1_render(  ) {
 						$diff = floor($datediff/(60*60*24)); //Returns the lowest value by rounding down value 
 						$remove = $options['dmkrtz_ruu_purgeafter'];
 						
-						echo '<b>', $user->id, ' - ', $user->user_login, '</b></br>';
-						echo '<b>', count_user_posts( $user->id ), ' post(s)</b></br>';
+						echo '<b>', $user->ID, ' - ', $user->user_login, '</b></br>';
+						echo '<b>', count_user_posts( $user->ID ), ' post(s)</b></br>';
 						echo 'Registered ', date('y/m/d h:ia', $your_date);
 						if ($diff >= $remove) {
 							echo ' <b style="color: red;">(EXCEEDED!)</b>';
@@ -321,27 +304,20 @@ function dmkrtz_ruu_1_render(  ) {
 }
 
 function dmkrtz_ruu_3_render(  ) { 
-	global $dmkrtz_ruu_logfile;
-	
-	if (file_exists($dmkrtz_ruu_logfile)) {
-		$logfile = json_decode(file_get_contents($dmkrtz_ruu_logfile), true);
-		
-		$logfile = array_reverse($logfile);
-	}
-	
+	$logfile = array_reverse( (array) get_option( 'dmkrtz_ruu_log', [] ) );
+
 	echo "<div class='checklist' style='height: fit-content; max-height: 500px;'>";
-		if ($logfile) {
-			foreach($logfile as $log) {
-				echo "<b>", $log['date'], "</b></br>";
-				echo $log['count'] . "</br>";
-				echo $log['users'];
-				echo "<hr>";
+		if ( $logfile ) {
+			foreach ( $logfile as $log ) {
+				echo '<b>', esc_html( $log['date'] ?? '' ), '</b></br>';
+				echo (int) ( $log['count'] ?? 0 ), '</br>';
+				echo esc_html( $log['users'] ?? '' );
+				echo '<hr>';
 			}
 		} else {
-			echo "No log file found.";
+			echo 'Log empty.';
 		}
-	echo "</div>";
-
+	echo '</div>';
 }
 
 function dmkrtz_ruu_settings_section_callback(  ) { 
@@ -375,17 +351,6 @@ function dmkrtz_ruu_options_page(  ) {
 		do_settings_sections( 'dmkrtz_ruu_settings' );
 		// submit_button();
 		
-		if (!empty($dmkrtz_ruu_foundplugins)) {
-
-			$args = array(
-			'meta_key'      =>  'account_status',
-			'meta_value'    =>  'awaiting_email_confirmation'
-			);
-
-			$users = get_users($args);
-			$number_of_users = count($users);
-		
-		}
 		?>
 	
 	<div class="form-buttons">
@@ -401,102 +366,11 @@ function dmkrtz_ruu_options_page(  ) {
 	</form>
 	<?php
 
-	if ( isset ( $_POST['purge'] ) ) {			
-		if ( $_POST['purge']==true ) {
-			do_action('dmkrtz_ruu_action');
-		}
-	}
 }
 
-add_action( 'dmkrtz_ruu_action', 'dmkrtz_ruu_action', 10 );
-function dmkrtz_ruu_action() {
-	require_once( ABSPATH.'wp-admin/includes/user.php' );
-	
-	$options = get_option( 'dmkrtz_ruu_settings' );
-	
-	$args = array(
-	'meta_key'      =>  'account_status',
-	'meta_value'    =>  'awaiting_email_confirmation'
-	);
-
-	$users = get_users($args);
-	$number_of_users = count($users);
-	$remove = $options['dmkrtz_ruu_purgeafter'];
-	$count = 0;
-
-	$now = time(); // Current time 
-	foreach ( $users as $user ) {
-		$user_id = $user->id;
-		$user_name = $user->user_login;
-		$your_date = strtotime($user->user_registered); // This will parses an English textual datetime into a Unix timestamp
-		$datediff = abs($now - $your_date);// Gives absolute Value 
-		$diff = floor($datediff/(60*60*24)); //Returns the lowest value by rounding down value 
-
-		if ($diff >= $remove) {
-			$users_purged[$count] = "{$user_name} ({$user_id})";
-			wp_delete_user( $user_id );
-			$count++;
-		}
-	}
-	
-	if($count>0) {
-		do_action('dmkrtz_ruu_sendmail', $count);
-		do_action('dmkrtz_ruu_logpurge', $count, $users_purged);
-	}
-
-}
-
-add_action( 'dmkrtz_ruu_sendmail', 'dmkrtz_ruu_sendmail', 10, 1);
-function dmkrtz_ruu_sendmail( $count ) {
-	$options = get_option( 'dmkrtz_ruu_settings' );
-	
-	// get email sender data
-	$email = $options['dmkrtz_ruu_emailreceiver'];
-	( $email ) ?: ( $email = get_bloginfo( 'admin_email' ) );
-	
-	$message = $options['dmkrtz_ruu_content'];
-	// Arrays
-	$placeholders = [
-		'{count}'
-	];
-	$fillplaceholders = [
-		$count
-	];
-	
-	$message = str_replace( $placeholders, $fillplaceholders, $message );
-	
-	if ( $options['dmkrtz_ruu_sendmails'] ) {
-		if ( $count > 0 ) {
-			$headers[] = 'Content-Type: text/html; charset=UTF-8';
-			$headers[] = 'From: ' . get_bloginfo( 'name' ) . ' < ' . get_bloginfo( 'admin_email' ) . '>';
-		
-			wp_mail( $email, "Remove Unapproved Users Info", $message, $headers );
-		}
-	}
-}
-
-add_action( 'dmkrtz_ruu_logpurge', 'dmkrtz_ruu_logpurge', 10, 2);
-function dmkrtz_ruu_logpurge( $count, $users_purged ) {
-	global $dmkrtz_ruu_logfile;
-	$datenow = date("d.m.y H:i");
-	
-	if(file_exists($dmkrtz_ruu_logfile)) {
-		$ruulog = json_decode(file_get_contents($dmkrtz_ruu_logfile), true);
-		$addlog = count($ruulog) + 1;
-	} else {
-		$ruulog = [];
-		$addlog = 0;
-	}
-	
-	$ruulog[$addlog]['date'] = $datenow;
-	$ruulog[$addlog]['count'] = $count;
-	$ruulog[$addlog]['users'] = implode(", ", $users_purged);
-	
-	file_put_contents($dmkrtz_ruu_logfile, json_encode($ruulog));
-}
+require_once("functions.php");
 
 register_activation_hook( __FILE__, 'dmkrtz_ruu_schedule_activation' );
-  
 function dmkrtz_ruu_schedule_activation() {
     if (! wp_next_scheduled ( 'dmkrtz_ruu_daily_event' )) {
         wp_schedule_event( strtotime('tomorrow 00:00'), 'daily', 'dmkrtz_ruu_daily_event' );
@@ -507,15 +381,15 @@ add_action( 'dmkrtz_ruu_daily_event', 'dmkrtz_ruu_purge' );
 function dmkrtz_ruu_purge() {
 	$options = get_option( 'dmkrtz_ruu_settings' );
 
-	if ( $options['dmkrtz_ruu_schedule'] ) {
+	if ( ! empty( $options['dmkrtz_ruu_schedule'] ) ) {
 		do_action('dmkrtz_ruu_action');
 	}
 }
-
 register_deactivation_hook( __FILE__, 'dmkrtz_ruu_schedule_deactivation' );
   
 function dmkrtz_ruu_schedule_deactivation() {
     wp_clear_scheduled_hook( 'dmkrtz_ruu_daily_event' );
+    wp_clear_scheduled_hook( 'dmkrtz_ruu_batch_event' );
 }
 
 /* Nach dieser Zeile KEINEN Code mehr einfügen*/

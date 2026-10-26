@@ -1,4 +1,12 @@
-jQuery(function() {
+jQuery(function() {	
+	const Toast = Swal.mixin({
+		toast: true,
+		position: 'center',
+		showConfirmButton: false,
+		timer: 1500,
+		timerProgressBar: true
+	})
+
     jQuery("#save").submit(function(e) 
 	{
 		e.preventDefault(); // avoid to execute the actual submit of the form.
@@ -13,21 +21,11 @@ jQuery(function() {
 			url: url,
 			data: form.serialize(), // serializes the form's elements.
 			success: function(data)
-			{
-				const Toast = Swal.mixin({
-					toast: true,
-					position: 'bottom',
-					showConfirmButton: false,
-					timer: 1500,
-					timerProgressBar: true
-				})
-				
-				document.getElementById('loading-div').style.display = "none";
-				
+			{				
 				Toast.fire({
 					icon: 'success',
 					title: 'Purge settings saved!',
-					didClose: () => {
+					didOpen: () => {
 						location.reload();
 					}
 				})
@@ -39,8 +37,6 @@ jQuery(function() {
 		{
 			e.preventDefault(); // avoid to execute the actual submit of the form.
 		
-			var phpToCall = window.location.origin + "/wp-admin/admin.php?page=remove_unapproved_users";
-
 			Swal.fire({
 				title: 'Are you sure?',
 				text: "You won't be able to revert this!",
@@ -53,25 +49,28 @@ jQuery(function() {
 				if (result.isConfirmed) {
 					document.getElementById('loading-div').style.display = "block";
 					jQuery.ajax({ 
-						url: phpToCall,
-						data: {purge:true},
+						url: dmkrtzRuu.ajax,
+						data: { action: 'dmkrtz_ruu_purge', nonce: dmkrtzRuu.nonce },
 						type: 'post',
 						success: function(output) {
-							const Toast = Swal.mixin({
-								toast: true,
-								position: 'bottom',
-								showConfirmButton: false,
-								timer: 1500,
-								timerProgressBar: true,
-								didClose: () => {
+							var r = output.data || {};
+							Toast.fire({
+								icon: 'success',
+								title: r.purged + ' users purged' + (r.remaining ? ', ' + r.remaining + ' more follow automatically' : '') + '!',
+								didOpen: () => {
 									location.reload();
 								}
 							})
+						},
+						error: function(jqXHR, error, errorThrown) {
+							console.log(jqXHR);
 							
-							document.getElementById('loading-div').style.display = "none";
-
 							Toast.fire({
-								title: 'Users purged!'
+								icon: 'error',
+								title: 'Error: ' + jqXHR.responseText,
+								didClose: () => {
+									location.reload();
+								}
 							})
 						}
 					});
