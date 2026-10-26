@@ -6,7 +6,7 @@ GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.4.0
+Version: 0.5.0
 */
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
@@ -33,7 +33,7 @@ function load_custom_wp_admin_scripts_ruu($hook) {
 	if($hook != "dmkrtz-tools_page_remove_unapproved_users") {
         return;
     }
-	wp_register_script( 'scripts', plugins_url('js/scripts.js', __FILE__), [ 'jquery' ], '0.4.0' );
+	wp_register_script( 'scripts', plugins_url('js/scripts.js', __FILE__), [ 'jquery' ], '0.5.0' );
 	wp_localize_script( 'scripts', 'dmkrtzRuu', [ 'ajax' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( 'dmkrtz_ruu_purge' ) ] );
 	wp_enqueue_script( 'scripts' );
 	wp_register_script( 'swal2', "https://cdn.jsdelivr.net/npm/sweetalert2@10" );
@@ -202,7 +202,7 @@ function dmkrtz_ruu_0_render( ) {
 		</div>
 		
 		<div>
-			<p>Notify each removed user by e-mail (why the account was removed; max. <?= DMKRTZ_RUU_MAILS ?> per run, <?= DMKRTZ_RUU_MAILGAP ?>s apart):</p>
+			<p>E-mail unconfirmed users: an activation reminder at half the purge age, and the reason once removed (max. <?= DMKRTZ_RUU_MAILS ?> per run, <?= DMKRTZ_RUU_MAILGAP ?>s apart):</p>
 			<label class="switch">
 				<input type='checkbox' name='dmkrtz_ruu_settings[dmkrtz_ruu_notifyusers]' <?php @checked( $options['dmkrtz_ruu_notifyusers'], 1 ); ?> value='1'>
 				<span class="slider round"></span>

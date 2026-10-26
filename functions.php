@@ -36,6 +36,29 @@ function dmkrtz_ruu_query( $number = -1, $only_expired = true, $fields = 'all' )
 	return new WP_User_Query( $args );
 }
 
+/* Unconfirmed users past half the purge age, not yet expired and not yet reminded */
+function dmkrtz_ruu_reminder_query( $number ) {
+	$o    = dmkrtz_ruu_options();
+	$days = $o['dmkrtz_ruu_purgeafter'];
+	return new WP_User_Query( [
+		'role__in'    => $o['dmkrtz_ruu_roles'],
+		'meta_query'  => [
+			[ 'key' => 'account_status', 'value' => 'awaiting_email_confirmation' ],
+			[ 'key' => 'dmkrtz_ruu_keep', 'compare' => 'NOT EXISTS' ],
+			[ 'key' => 'dmkrtz_ruu_reminded', 'compare' => 'NOT EXISTS' ],
+		],
+		'date_query'  => [ [
+			'column' => 'user_registered',
+			'before' => gmdate( 'Y-m-d H:i:s', time() - (int) max( 1, floor( $days / 2 ) ) * DAY_IN_SECONDS ),
+			'after'  => gmdate( 'Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS ),
+		] ],
+		'orderby'     => 'user_registered',
+		'order'       => 'ASC',
+		'number'      => $number,
+		'count_total' => true,
+	] );
+}
+
 /* Delete one batch; schedules a follow-up run while users are left */
 add_action( 'dmkrtz_ruu_action', 'dmkrtz_ruu_action', 10 );
 function dmkrtz_ruu_action() {
@@ -79,11 +102,24 @@ function dmkrtz_ruu_action() {
 
 	remove_filter( 'pre_wp_mail', $no_mail, 999 );
 
+	// halfway reminders with the activation link, from the same mail budget
+	$reminded = 0;
+	if ( $notify && $mailed < DMKRTZ_RUU_MAILS && time() - $start <= DMKRTZ_RUU_TIME ) {
+		foreach ( dmkrtz_ruu_reminder_query( DMKRTZ_RUU_MAILS - $mailed )->get_results() as $user ) {
+			if ( $mailed++ > 0 )
+				sleep( DMKRTZ_RUU_MAILGAP );
+			dmkrtz_ruu_remind_user( $user );
+			$reminded++;
+		}
+	}
+
 	if ( $purged || $skipped )
 		dmkrtz_ruu_logpurge( count( $purged ), $purged );
 
 	$done      = (int) get_option( 'dmkrtz_ruu_run_count', 0 ) + count( $purged );
 	$remaining = max( 0, $total - count( $purged ) - $skipped );
+	if ( $notify )
+		$remaining += (int) dmkrtz_ruu_reminder_query( 1 )->get_total();
 
 	// more left → continue in two minutes instead of waiting a whole day; mail once at the end
 	if ( $remaining > 0 ) {
@@ -95,7 +131,7 @@ function dmkrtz_ruu_action() {
 		dmkrtz_ruu_sendmail( $done );
 	}
 
-	return [ 'purged' => count( $purged ), 'remaining' => $remaining ];
+	return [ 'purged' => count( $purged ), 'reminded' => $reminded, 'remaining' => $remaining ];
 }
 add_action( 'dmkrtz_ruu_batch_event', 'dmkrtz_ruu_action' );
 
@@ -114,6 +150,38 @@ function dmkrtz_ruu_notify_user( $user ) {
 		esc_html( $name ), esc_html( $site ), $days, esc_url( function_exists( 'um_get_core_page' ) ? um_get_core_page( 'register' ) : wp_registration_url() )
 	);
 	$message = apply_filters( 'dmkrtz_ruu_user_mail', $message, $user );
+
+	return wp_mail( $user->user_email, $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
+}
+
+/* Halfway reminder: account will be removed in X days unless activated via the link */
+function dmkrtz_ruu_remind_user( $user ) {
+	update_user_meta( $user->ID, 'dmkrtz_ruu_reminded', time() ); // once per user, even if the mail fails
+
+	// UM link; a fresh hash when the old one is missing or expired
+	$expiry = (int) get_user_meta( $user->ID, 'account_secret_hash_expiry', true );
+	if ( ! get_user_meta( $user->ID, 'account_secret_hash', true ) || ( $expiry && time() > $expiry ) )
+		UM()->common()->users()->assign_secretkey( $user->ID );
+	$link = UM()->permalinks()->activate_url( $user->ID );
+	if ( ! $link )
+		return false;
+
+	$site    = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+	$days    = dmkrtz_ruu_options()['dmkrtz_ruu_purgeafter'];
+	$deleted = strtotime( $user->user_registered . ' UTC' ) + $days * DAY_IN_SECONDS;
+	$left    = max( 1, (int) ceil( ( $deleted - time() ) / DAY_IN_SECONDS ) );
+	$name    = $user->display_name ?: $user->user_login;
+
+	$subject = sprintf( 'Please activate your %s account', $site );
+	$message = sprintf(
+		'<p>Hi %1$s,</p>'
+		. '<p>you registered an account on %2$s, but your e-mail address has not been confirmed yet. Unconfirmed accounts are removed automatically, so your account will be deleted in %3$s (after %4$s).</p>'
+		. '<p>To keep your account, please activate it with this link:<br><a href="%5$s">%5$s</a></p>'
+		. '<p>%2$s</p>',
+		esc_html( $name ), esc_html( $site ), $left === 1 ? '1 day' : $left . ' days',
+		esc_html( wp_date( 'j F Y', $deleted ) ), esc_url( $link )
+	);
+	$message = apply_filters( 'dmkrtz_ruu_reminder_mail', $message, $user, $link );
 
 	return wp_mail( $user->user_email, $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
 }
