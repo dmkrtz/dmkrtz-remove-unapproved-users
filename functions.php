@@ -4,6 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) exit; // loaded by the plugin only
 define( 'DMKRTZ_RUU_BATCH', 200 );     // users per run
 define( 'DMKRTZ_RUU_TIME', 20 );       // seconds per run
 define( 'DMKRTZ_RUU_LOGSIZE', 100 );   // kept log entries
+define( 'DMKRTZ_RUU_MAILS', 10 );      // users notified per run (IONOS locks the mailbox on bursts)
+define( 'DMKRTZ_RUU_MAILGAP', 3 );     // seconds between two notification mails
 
 /* Settings with defaults */
 function dmkrtz_ruu_options() {
@@ -50,8 +52,11 @@ function dmkrtz_ruu_action() {
 	$no_mail = function () { return false; };
 	add_filter( 'pre_wp_mail', $no_mail, 999 );
 
+	$notify = ! empty( dmkrtz_ruu_options()['dmkrtz_ruu_notifyusers'] );
+	$mailed = 0;
+
 	foreach ( $query->get_results() as $user ) {
-		if ( time() - $start > DMKRTZ_RUU_TIME )
+		if ( time() - $start > DMKRTZ_RUU_TIME || ( $notify && $mailed >= DMKRTZ_RUU_MAILS ) )
 			break;
 		// accounts that already have content are never removed
 		if ( count_user_posts( $user->ID, 'any' ) > 0 ) {
@@ -60,8 +65,16 @@ function dmkrtz_ruu_action() {
 			continue;
 		}
 		$roles = implode( ',', (array) $user->roles );
-		if ( wp_delete_user( $user->ID ) )
+		if ( wp_delete_user( $user->ID ) ) {
 			$purged[] = "{$user->user_login} ({$user->ID} | {$roles})";
+			if ( $notify ) {
+				if ( $mailed++ > 0 )
+					sleep( DMKRTZ_RUU_MAILGAP );
+				remove_filter( 'pre_wp_mail', $no_mail, 999 );
+				dmkrtz_ruu_notify_user( $user );
+				add_filter( 'pre_wp_mail', $no_mail, 999 );
+			}
+		}
 	}
 
 	remove_filter( 'pre_wp_mail', $no_mail, 999 );
@@ -85,6 +98,25 @@ function dmkrtz_ruu_action() {
 	return [ 'purged' => count( $purged ), 'remaining' => $remaining ];
 }
 add_action( 'dmkrtz_ruu_batch_event', 'dmkrtz_ruu_action' );
+
+/* Tells a deleted user why the account is gone (sent right after wp_delete_user) */
+function dmkrtz_ruu_notify_user( $user ) {
+	$site = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+	$days = dmkrtz_ruu_options()['dmkrtz_ruu_purgeafter'];
+	$name = $user->display_name ?: $user->user_login;
+
+	$subject = sprintf( 'Your %s account has been removed', $site );
+	$message = sprintf(
+		'<p>Hi %1$s,</p>'
+		. '<p>you registered an account on %2$s, but the e-mail address was not confirmed within %3$d days. Unconfirmed accounts are removed automatically, so your account and its data have been deleted.</p>'
+		. '<p>You are welcome to <a href="%4$s">register again</a> at any time. Please click the confirmation link in the e-mail you receive after registering.</p>'
+		. '<p>%2$s</p>',
+		esc_html( $name ), esc_html( $site ), $days, esc_url( function_exists( 'um_get_core_page' ) ? um_get_core_page( 'register' ) : wp_registration_url() )
+	);
+	$message = apply_filters( 'dmkrtz_ruu_user_mail', $message, $user );
+
+	return wp_mail( $user->user_email, $subject, $message, [ 'Content-Type: text/html; charset=UTF-8' ] );
+}
 
 /* Summary mail once a purge run is complete */
 function dmkrtz_ruu_sendmail( $count ) {
