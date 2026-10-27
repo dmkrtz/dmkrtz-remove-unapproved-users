@@ -6,7 +6,7 @@ GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.5.0
+Version: 0.5.1
 */
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
@@ -58,8 +58,11 @@ add_action( 'admin_init', 'dmkrtz_ruu_settings_init' );
 
 function dmkrtz_ruu_add_admin_menu(  ) { 
 
-	add_menu_page('dmkrtz Tools', 'dmkrtz Tools', 'manage_options', 'dmkrtz_tools', false, plugins_url("assets/insane_logo_16.png", __FILE__), 99 );
-	add_submenu_page( 'dmkrtz_tools', 'Remove Unapproved Users', 'Remove Unapproved Users',
+	// shares the site's "dmkrtz Settings" menu when it exists (mu-plugin mods-settings), else its own "dmkrtz Tools"
+	$parent = defined('MODS_SETTINGS_MENU') ? MODS_SETTINGS_MENU : 'dmkrtz_tools';
+	if ($parent === 'dmkrtz_tools')
+		add_menu_page('dmkrtz Tools', 'dmkrtz Tools', 'manage_options', 'dmkrtz_tools', false, plugins_url("assets/insane_logo_16.png", __FILE__), 99 );
+	add_submenu_page( $parent, 'Remove Unapproved Users', 'Remove Unapproved Users',
     'manage_options', 'remove_unapproved_users', 'dmkrtz_ruu_options_page');
 
 	remove_submenu_page('dmkrtz_tools', 'dmkrtz_tools');
