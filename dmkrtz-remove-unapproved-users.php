@@ -6,7 +6,7 @@ GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
 Description: Removes users that haven't activated their account after set time.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.5.1
+Version: 0.5.2
 */
 
 /* Verbiete den direkten Zugriff auf die Plugin-Datei */
@@ -30,7 +30,7 @@ function dmkrtz_ruu_settings_link($links) {
 add_action( 'admin_enqueue_scripts', 'load_custom_wp_admin_scripts_ruu' );
 function load_custom_wp_admin_scripts_ruu($hook) {
 
-	if($hook != "dmkrtz-tools_page_remove_unapproved_users") {
+	if ( substr( (string) $hook, -strlen( "_page_remove_unapproved_users" ) ) !== "_page_remove_unapproved_users" ) { // any parent menu
         return;
     }
 	wp_register_script( 'scripts', plugins_url('js/scripts.js', __FILE__), [ 'jquery' ], '0.5.0' );
@@ -44,7 +44,7 @@ function load_custom_wp_admin_scripts_ruu($hook) {
 add_action( 'admin_enqueue_scripts', 'load_custom_wp_admin_style_ruu' );
 function load_custom_wp_admin_style_ruu($hook) {
 
-    if($hook != "dmkrtz-tools_page_remove_unapproved_users") {
+    if ( substr( (string) $hook, -strlen( "_page_remove_unapproved_users" ) ) !== "_page_remove_unapproved_users" ) { // any parent menu
         return;
     }
     wp_enqueue_style( 'custom_wp_admin_css', plugins_url('admin-style.css', __FILE__) );
