@@ -1,0 +1,81 @@
+/* Remove Unapproved Users – dmkrtz plugin admin look (same numbers as the Download Link Tracker) */
+.dmru { --dmru-accent: #3858e9; --dmru-line: #dcdcde; --dmru-soft: #f0f0f1; --dmru-muted: #646970; max-width: 1400px; }
+.dmru .dmru-muted { color: var(--dmru-muted); }
+
+/* tabs */
+.dmru-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--dmru-line); margin: 12px 0 16px; overflow-x: auto; scrollbar-width: none; }
+.dmru-tabs a { padding: 10px 14px; color: #1d2327; text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.dmru-tabs a:hover { color: var(--dmru-accent); }
+.dmru-tabs a.is-active { border-bottom-color: var(--dmru-accent); color: var(--dmru-accent); }
+.dmru-tabs a:focus { box-shadow: none; outline: 2px solid var(--dmru-accent); outline-offset: -2px; }
+.dmru-tabs .count { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; border-radius: 9px; background: var(--dmru-soft); color: #1d2327; font-size: 12px; text-align: center; }
+
+/* KPI tiles */
+.dmru-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; max-width: 900px; }
+.dmru-kpi { background: #fff; border: 1px solid var(--dmru-line); border-radius: 10px; padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dmru-kpi-label { color: var(--dmru-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; }
+.dmru-kpi strong { font-size: 28px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.dmru-kpi-sub { color: var(--dmru-muted); font-size: 12px; }
+
+/* cards + fields */
+.dmru-card { background: #fff; border: 1px solid var(--dmru-line); border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; max-width: 900px; }
+.dmru-card h2 { margin: 0 0 12px; font-size: 15px; }
+.dmru-card > p.dmru-muted { margin: -6px 0 10px; }
+.dmru-card > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 10px; }
+.dmru-card > header h2 { margin: 0; }
+.dmru-card > header .button { margin-left: auto; }
+.dmru-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 20px; }
+.dmru-field { margin: 10px 0; min-width: 0; }
+.dmru-field.is-wide { grid-column: 1 / -1; }
+.dmru-label { display: block; font-weight: 600; margin-bottom: 4px; }
+.dmru-field .regular-text, .dmru-field select, .dmru-field textarea { width: 100%; max-width: 100%; }
+.dmru-field .description { margin-top: 4px; }
+.dmru-checks { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.dmru-checks-scroll { max-height: 260px; overflow: auto; padding: 8px 10px; border: 1px solid var(--dmru-line); border-radius: 8px; flex-direction: column; flex-wrap: nowrap; }
+.dmru-switch-row { display: flex; gap: 12px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--dmru-soft); cursor: pointer; }
+.dmru-card h2 + .dmru-switch-row, .dmru-card > p + .dmru-switch-row { border-top: 0; }
+.dmru-switch-row .description { display: block; margin-top: 2px; }
+.dmru-switch { position: relative; flex: 0 0 40px; height: 22px; margin-top: 1px; }
+.dmru-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.dmru-switch span { position: absolute; inset: 0; background: #c3c4c7; border-radius: 22px; transition: .15s; pointer-events: none; }
+.dmru-switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .15s; }
+.dmru-switch input:checked + span { background: var(--dmru-accent); }
+.dmru-switch input:checked + span::before { transform: translateX(18px); }
+.dmru-switch input:focus-visible + span { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--dmru-accent); }
+.dmru-radios { display: flex; flex-direction: column; gap: 8px; }
+.dmru-radio { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--dmru-line); border-radius: 8px; cursor: pointer; }
+.dmru-radio:has(input:checked) { border-color: var(--dmru-accent); background: #f3f5fd; }
+.dmru-save { position: sticky; bottom: 0; margin: 0; padding: 12px 0; background: linear-gradient(transparent, #f0f0f1 30%); max-width: 900px; }
+.dmru-alert { margin: 0 0 16px; padding: 10px 14px; background: #fcf9e8; border: 1px solid #f0c33c; border-left-width: 4px; border-radius: 6px; max-width: 900px; }
+.dmru-alert p { margin: 0; }
+
+/* tables */
+.dmru-table { width: 100%; border-collapse: collapse; }
+.dmru-table th { text-align: left; font-weight: 500; color: var(--dmru-muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--dmru-line); }
+.dmru-table td { padding: 8px; border-bottom: 1px solid var(--dmru-soft); vertical-align: top; overflow-wrap: anywhere; }
+.dmru-table tr:last-child td { border-bottom: 0; }
+.dmru-table tbody tr:hover { background: #f6f7f7; }
+.dmru-num, .dmru-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dmru-num { font-weight: 600; }
+.dmru-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.dmru-pill.is-ok { background: #edfaef; color: #008a20; }
+.dmru-pill.is-warn { background: #fcf0e3; color: #a35a00; }
+.dmru-scroll { max-height: 520px; overflow: auto; }
+
+@media (max-width: 782px) {
+	.dmru-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+	.dmru-kpi { padding: 12px 14px; }
+	.dmru-kpi strong { font-size: 22px; }
+	.dmru-card { padding: 12px 14px; }
+	.dmru-card > header .button { margin-left: 0; width: 100%; text-align: center; }
+	.dmru-table thead { display: none; }
+	.dmru-table, .dmru-table tbody, .dmru-table tr, .dmru-table td { display: block; width: auto; }
+	.dmru-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--dmru-soft); }
+	.dmru-table td { padding: 0; border: 0; }
+	.dmru-table td:first-child { grid-column: 1 / -1; }
+	.dmru-table td.is-wide { grid-column: 1 / -1; }
+	.dmru-checks-scroll { gap: 0; }
+	.dmru-checks-scroll label { padding: 8px 0; }
+	.dmru-checks-scroll label + label { border-top: 1px solid var(--dmru-soft); }
+	.dmru-table td:not(:first-child)::before { content: attr(data-label) ": "; color: var(--dmru-muted); font-size: 12px; }
+}

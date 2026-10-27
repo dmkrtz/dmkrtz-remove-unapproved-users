@@ -193,7 +193,7 @@ function dmkrtz_ruu_sendmail( $count ) {
 		return;
 
 	$email   = ! empty( $o['dmkrtz_ruu_emailreceiver'] ) ? $o['dmkrtz_ruu_emailreceiver'] : get_bloginfo( 'admin_email' );
-	$message = str_replace( '{count}', $count, (string) ( $o['dmkrtz_ruu_content'] ?? '{count} users removed.' ) );
+	$message = str_replace( '{count}', $count, (string) ( ( $o['dmkrtz_ruu_content'] ?? '' ) ?: '{count} users removed.' ) );
 	$headers = [ 'Content-Type: text/html; charset=UTF-8' ];
 	wp_mail( $email, 'Remove Unapproved Users Info', $message, $headers );
 }
@@ -205,13 +205,6 @@ function dmkrtz_ruu_logpurge( $count, $users_purged ) {
 	$log[] = [ 'date' => wp_date( 'd.m.y H:i' ), 'count' => $count, 'users' => implode( ', ', $users_purged ) ];
 	update_option( 'dmkrtz_ruu_log', array_slice( $log, -DMKRTZ_RUU_LOGSIZE ), false );
 }
-
-/* Manual purge from the settings page (admins only, nonce checked) */
-add_action( 'wp_ajax_dmkrtz_ruu_purge', function () {
-	if ( ! current_user_can( 'manage_options' ) || ! check_ajax_referer( 'dmkrtz_ruu_purge', 'nonce', false ) )
-		wp_send_json_error( 'Not allowed', 403 );
-	wp_send_json_success( dmkrtz_ruu_action() );
-} );
 
 /* Daily event must always exist (it went missing after migrations before) */
 add_action( 'init', function () {
