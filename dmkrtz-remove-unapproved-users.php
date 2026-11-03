@@ -3,15 +3,15 @@
 Plugin Name: dmkrtz Remove Unapproved Users (GitHub)
 Plugin URI: https://dmkrtz.de
 GitHub Plugin URI: dmkrtz/dmkrtz-remove-unapproved-users
-Description: Removes users that haven't activated their account after set time.
+Description: Removes users that haven't activated their account after set time, and inactive members without posts after a warning mail.
 Author: dmkrtz
 Author URI: https://dmkrtz.de
-Version: 0.6.0
+Version: 0.7.0
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'DMKRTZ_RUU_VERSION', '0.6.0' );
+define( 'DMKRTZ_RUU_VERSION', '0.7.0' );
 define( 'DMKRTZ_RUU_PAGE', 'remove_unapproved_users' );
 
 add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function ( $links ) {
@@ -66,6 +66,10 @@ function dmkrtz_ruu_sanitize( $in ) {
 		'dmkrtz_ruu_sendmails'     => empty( $in['dmkrtz_ruu_sendmails'] ) ? 0 : 1,
 		'dmkrtz_ruu_emailreceiver' => sanitize_email( (string) ( $in['dmkrtz_ruu_emailreceiver'] ?? '' ) ),
 		'dmkrtz_ruu_content'       => wp_kses_post( (string) ( $in['dmkrtz_ruu_content'] ?? '' ) ),
+		'dmkrtz_ruu_inactive'        => empty( $in['dmkrtz_ruu_inactive'] ) ? 0 : 1,
+		'dmkrtz_ruu_inactive_months' => max( 6, min( 60, (int) ( $in['dmkrtz_ruu_inactive_months'] ?? 12 ) ) ),
+		'dmkrtz_ruu_inactive_days'   => max( 7, min( 90, (int) ( $in['dmkrtz_ruu_inactive_days'] ?? 30 ) ) ),
+		'dmkrtz_ruu_inactive_perday' => max( 10, min( 1000, (int) ( $in['dmkrtz_ruu_inactive_perday'] ?? 300 ) ) ),
 	];
 }
 
@@ -124,7 +128,7 @@ function dmkrtz_ruu_options_page() {
 	$next = wp_next_scheduled( 'dmkrtz_ruu_daily_event' );
 
 	echo '<div class="wrap dmru"><h1>Remove Unapproved Users</h1>';
-	echo '<p class="dmru-muted">Removes accounts that never confirmed their e-mail address. Accounts with posts are always kept.</p>';
+	echo '<p class="dmru-muted">Removes accounts that never confirmed their e-mail address, and – after a warning mail – inactive members without posts. Accounts with posts are always kept.</p>';
 	if ( isset( $_GET['settings-updated'] ) )
 		echo '<div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>';
 	if ( ! empty( $_GET['notice'] ) )
@@ -135,6 +139,7 @@ function dmkrtz_ruu_options_page() {
 	echo '<nav class="dmru-tabs" role="tablist">'
 		. '<a href="#settings" data-tab="settings" data-form="1">Settings</a>'
 		. '<a href="#users" data-tab="users" data-form="0">Pending users <span class="count">' . number_format_i18n( $total ) . '</span></a>'
+		. '<a href="#inactive" data-tab="inactive" data-form="0">Inactive</a>'
 		. '<a href="#log" data-tab="log" data-form="0">Log</a></nav>';
 
 	/* ---- settings ---- */
@@ -173,6 +178,15 @@ function dmkrtz_ruu_options_page() {
 	echo '<div class="dmru-field is-wide"><label class="dmru-label" for="dmru-content">Summary text</label><textarea id="dmru-content" rows="5" class="large-text" name="dmkrtz_ruu_settings[dmkrtz_ruu_content]">' . esc_textarea( $o['dmkrtz_ruu_content'] ?? '' ) . '</textarea>'
 		. '<p class="description">HTML allowed. <code>{count}</code> = removed users. Empty: "{count} users removed."</p></div>';
 	echo '</div></div>';
+	$io = dmkrtz_ruu_inactive_options();
+	echo '<div class="dmru-card"><h2>Inactive accounts</h2>';
+	dmkrtz_ruu_switch( 'dmkrtz_ruu_inactive', 'Remove inactive members without posts', $io['on'],
+		'Members (roles above) without any published post whose last login – or registration, if no login was recorded – is older than the set time get one warning mail. A login keeps the account; otherwise it is removed after the waiting time, without another mail. Runs with the daily removal above.' );
+	echo '<div class="dmru-grid">';
+	echo '<div class="dmru-field"><label class="dmru-label" for="dmru-im">Inactive for</label><input id="dmru-im" type="number" class="small-text" min="6" max="60" name="dmkrtz_ruu_settings[dmkrtz_ruu_inactive_months]" value="' . (int) $io['months'] . '"> months<p class="description">Default: 12.</p></div>';
+	echo '<div class="dmru-field"><label class="dmru-label" for="dmru-id">Remove after the warning</label><input id="dmru-id" type="number" class="small-text" min="7" max="90" name="dmkrtz_ruu_settings[dmkrtz_ruu_inactive_days]" value="' . (int) $io['days'] . '"> days<p class="description">Default: 30.</p></div>';
+	echo '<div class="dmru-field"><label class="dmru-label" for="dmru-ip">Warnings per day</label><input id="dmru-ip" type="number" class="small-text" min="10" max="1000" name="dmkrtz_ruu_settings[dmkrtz_ruu_inactive_perday]" value="' . (int) $io['perday'] . '"><p class="description">' . DMKRTZ_RUU_MAILS . ' per run, ' . DMKRTZ_RUU_MAILGAP . ' s apart (mail provider limit). Default: 300.</p></div>';
+	echo '</div></div>';
 	echo '</section><p class="dmru-save"><button class="button button-primary button-large">Save settings</button></p></form>';
 
 	/* ---- pending users ---- */
@@ -200,6 +214,26 @@ function dmkrtz_ruu_options_page() {
 		echo '<p class="dmru-muted">Nobody is waiting for a confirmation.</p>';
 	}
 	echo '</div></section>';
+
+	/* ---- inactive ---- */
+	$io    = dmkrtz_ruu_inactive_options();
+	$ic = get_transient( 'dmkrtz_ruu_inactive_counts' ); // the counts take seconds on big sites
+	if ( ! is_array( $ic ) ) {
+		$ic = [ dmkrtz_ruu_inactive_ids( 'warn', 1, true ), dmkrtz_ruu_inactive_ids( 'due', 1, true ), (int) $GLOBALS['wpdb']->get_var( "SELECT COUNT(*) FROM {$GLOBALS['wpdb']->usermeta} WHERE meta_key = 'dmkrtz_ruu_inactive_warned'" ) ];
+		set_transient( 'dmkrtz_ruu_inactive_counts', $ic, 10 * MINUTE_IN_SECONDS );
+	}
+	[ $iwarn, $idue, $iwait ] = $ic;
+	echo '<section class="dmru-panel" data-panel="inactive" hidden>';
+	if ( ! $io['on'] ) echo '<div class="dmru-alert"><p><strong>Off.</strong> Switch it on under Settings → Inactive accounts.</p></div>';
+	echo '<div class="dmru-kpis">'
+		. '<div class="dmru-kpi"><span class="dmru-kpi-label">Not warned yet</span><strong>' . number_format_i18n( $iwarn ) . '</strong><span class="dmru-kpi-sub">inactive &gt; ' . (int) $io['months'] . ' months, no posts</span></div>'
+		. '<div class="dmru-kpi"><span class="dmru-kpi-label">Warned</span><strong>' . number_format_i18n( $iwait ) . '</strong><span class="dmru-kpi-sub">a login keeps the account</span></div>'
+		. '<div class="dmru-kpi"><span class="dmru-kpi-label">Due for removal</span><strong>' . number_format_i18n( $idue ) . '</strong><span class="dmru-kpi-sub">' . (int) $io['days'] . ' days after the warning</span></div>'
+		. '<div class="dmru-kpi"><span class="dmru-kpi-label">Warnings today</span><strong>' . number_format_i18n( dmkrtz_ruu_inactive_sent_today() ) . '</strong><span class="dmru-kpi-sub">of ' . number_format_i18n( $io['perday'] ) . ' per day</span></div>'
+		. '</div>';
+	if ( $iwarn && $io['on'] )
+		echo '<p class="dmru-muted">At ' . number_format_i18n( $io['perday'] ) . ' warnings a day all current accounts are warned in about ' . number_format_i18n( (int) ceil( $iwarn / $io['perday'] ) ) . ' days.</p>';
+	echo '<p class="dmru-muted">Numbers are refreshed every 10 minutes.</p></section>';
 
 	/* ---- log ---- */
 	echo '<section class="dmru-panel" data-panel="log" hidden><div class="dmru-card"><header><h2>Log</h2><span class="dmru-muted">Last ' . DMKRTZ_RUU_LOGSIZE . ' runs, newest first</span></header>';
@@ -229,6 +263,7 @@ function dmkrtz_ruu_options_page() {
 }
 
 require_once __DIR__ . '/functions.php';
+require_once __DIR__ . '/inactive.php';
 
 register_activation_hook( __FILE__, 'dmkrtz_ruu_schedule_activation' );
 function dmkrtz_ruu_schedule_activation() {

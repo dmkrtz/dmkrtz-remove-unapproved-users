@@ -121,6 +121,9 @@ function dmkrtz_ruu_action() {
 	if ( $notify )
 		$remaining += (int) dmkrtz_ruu_reminder_query( 1 )->get_total();
 
+	// inactive accounts (inactive.php): removals + warnings from the rest of the run
+	$remaining += dmkrtz_ruu_inactive_run( $start, $mailed );
+
 	// more left → continue in two minutes instead of waiting a whole day; mail once at the end
 	if ( $remaining > 0 ) {
 		update_option( 'dmkrtz_ruu_run_count', $done, false );
