@@ -2,8 +2,8 @@
 if ( ! defined( 'ABSPATH' ) ) exit; // loaded by the plugin only
 
 /*
- * Inactive accounts: members without any published post whose last login (or registration, if they never
- * logged in since logins are tracked) is older than X months get one warning mail; logging in keeps the
+ * Inactive accounts: members without any published post whose last activity (mu-plugin mods-activity:
+ * any request while logged in, else last login / registration) is older than X months get one warning mail; logging in keeps the
  * account. Without a login within Y days after the warning the account is removed (no further mail).
  * Warnings are throttled (per run like the reminders, plus a daily limit) because IONOS locks the mailbox on bursts.
  *
@@ -30,26 +30,27 @@ function dmkrtz_ruu_inactive_options() {
 function dmkrtz_ruu_inactive_ids( $stage, $limit = 0, $count = false ) {
 	global $wpdb;
 	$io     = dmkrtz_ruu_inactive_options();
-	$cut    = gmdate( 'Y-m-d H:i:s', strtotime( '-' . $io['months'] . ' months' ) );
+	$cut    = strtotime( '-' . $io['months'] . ' months' );
 	$roles  = array_map( fn( $r ) => '%"' . $wpdb->esc_like( $r ) . '"%', $io['roles'] );
 	$rolesql = implode( ' OR ', array_fill( 0, count( $roles ), 'cap.meta_value LIKE %s' ) );
 	$sql = "FROM $wpdb->users u
 		JOIN $wpdb->usermeta cap ON cap.user_id = u.ID AND cap.meta_key = '{$wpdb->prefix}capabilities' AND ( $rolesql )
+		LEFT JOIN $wpdb->usermeta la ON la.user_id = u.ID AND la.meta_key = 'mods_last_activity'
 		LEFT JOIN ( SELECT user_id, MAX( meta_value ) v FROM $wpdb->usermeta WHERE meta_key = '_um_last_login' GROUP BY user_id ) ll ON ll.user_id = u.ID
 		LEFT JOIN $wpdb->usermeta w ON w.user_id = u.ID AND w.meta_key = 'dmkrtz_ruu_inactive_warned'
-		WHERE GREATEST( u.user_registered, IFNULL( ll.v, '0' ) ) < %s
+		WHERE GREATEST( UNIX_TIMESTAMP( u.user_registered ), IFNULL( CAST( la.meta_value AS UNSIGNED ), 0 ), IFNULL( UNIX_TIMESTAMP( ll.v ), 0 ) ) < %d
 		AND NOT EXISTS ( SELECT 1 FROM $wpdb->posts p WHERE p.post_author = u.ID AND p.post_status = 'publish' AND p.post_type NOT IN ('attachment','revision','nav_menu_item') )
 		AND NOT EXISTS ( SELECT 1 FROM $wpdb->usermeta k WHERE k.user_id = u.ID AND k.meta_key = 'dmkrtz_ruu_keep' )";
 	$args = array_merge( $roles, [ $cut ] );
 	if ( $stage === 'warn' ) {
 		$sql .= ' AND w.umeta_id IS NULL';
 	} else { // warned long enough ago, and the last login is older than the warning
-		$sql   .= ' AND w.meta_value < %d AND IFNULL( UNIX_TIMESTAMP( ll.v ), 0 ) < w.meta_value';
+		$sql   .= ' AND w.meta_value < %d AND IFNULL( CAST( la.meta_value AS UNSIGNED ), 0 ) < w.meta_value AND IFNULL( UNIX_TIMESTAMP( ll.v ), 0 ) < w.meta_value';
 		$args[] = time() - $io['days'] * DAY_IN_SECONDS;
 	}
 	if ( $count )
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) $sql", $args ) );
-	return array_map( 'intval', $wpdb->get_col( $wpdb->prepare( "SELECT u.ID $sql ORDER BY GREATEST( u.user_registered, IFNULL( ll.v, '0' ) ) ASC LIMIT " . (int) $limit, $args ) ) );
+	return array_map( 'intval', $wpdb->get_col( $wpdb->prepare( "SELECT u.ID $sql ORDER BY GREATEST( UNIX_TIMESTAMP( u.user_registered ), IFNULL( CAST( la.meta_value AS UNSIGNED ), 0 ), IFNULL( UNIX_TIMESTAMP( ll.v ), 0 ) ) ASC LIMIT " . (int) $limit, $args ) ) );
 }
 
 /** Warnings sent today (UTC), for the daily limit. */
